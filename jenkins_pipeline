@@ -1,0 +1,60 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Clone Repository') {
+            steps {
+                echo 'Cloning the repository from GitHub...'
+                git branch: 'master', url: 'https://github.com/jegadeeshmanit/deploy_webapp.git'
+            }
+        }
+
+        stage('List Workspace') {
+            steps {
+                echo 'Listing workspace contents...'
+                sh 'ls -la'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                echo 'Building the Docker image from Nginx...'
+
+                // Ensure there is a Dockerfile in the repository for the build
+                sh '''
+                    if [ ! -f Dockerfile ]; then
+                        echo "Dockerfile not found! Creating one..."
+                        echo "
+                        FROM nginx:latest
+                        COPY index.html /usr/share/nginx/html/index.html
+                        COPY DevOps_img.webp /usr/share/nginx/html/
+                        COPY photo.jpg /usr/share/nginx/html/
+                        COPY vev.css /usr/share/nginx/html/
+                        EXPOSE 80
+                        " > Dockerfile
+                    fi
+                    docker build -t nginx .
+                '''
+            }
+        }
+
+        stage('Run Nginx Container') {
+            steps {
+                echo 'Running the Nginx container...'
+                sh '''
+                    docker rm -f webapp || true
+                    docker run -d --name webapp -p 8000:80 nginx
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline executed successfully!'
+        }
+        failure {
+            echo 'Pipeline execution failed.'
+        }
+    }
+}
